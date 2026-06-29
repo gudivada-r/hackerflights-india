@@ -1,0 +1,48 @@
+name: 🚀 Deploy Backend to Cloud Run
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'Dockerfile'
+
+jobs:
+  deploy:
+    name: Deploy FastAPI → Cloud Run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Build & Push Docker image
+        run: |
+          IMAGE=us-central1-docker.pkg.dev/gen-lang-client-0147006467/cloud-run-source-deploy/hackerflights-api:${{ github.sha }}
+          docker build -t $IMAGE .
+          docker push $IMAGE
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy hackerflights-api \
+            --image us-central1-docker.pkg.dev/gen-lang-client-0147006467/cloud-run-source-deploy/hackerflights-api:${{ github.sha }} \
+            --region us-central1 \
+            --project gen-lang-client-0147006467 \
+            --allow-unauthenticated \
+            --set-env-vars "MISTRAL_BACKEND=api,MISTRAL_API_KEY=${{ secrets.MISTRAL_API_KEY }},MISTRAL_MODEL=open-mistral-nemo,DB_PATH=/data/hackerflights.db" \
+            --quiet
+
+      - name: Print live URL
+        run: |
+          echo "✅ Backend live at: https://hackerflights-api-968671456777.us-central1.run.app"
