@@ -12,6 +12,9 @@ build/
 backend/.env
 backend/.env.production
 
+# GCP service account key — NEVER commit
+gcp-sa-key.json
+
 # Database
 *.db
 *.sqlite
